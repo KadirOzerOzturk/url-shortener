@@ -2,21 +2,20 @@ package urls
 
 import (
 	"fmt"
+	"log"
 	"net/http"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/KadirOzerOzturk/url-shortener/app/entities"
 	"github.com/KadirOzerOzturk/url-shortener/app/helpers"
 	"github.com/KadirOzerOzturk/url-shortener/internal/database"
 	"github.com/gofiber/fiber/v2"
+	"gorm.io/gorm"
 )
 
 func Index(c *fiber.Ctx) error {
-	db := database.Connection()
-	if db == nil {
-		return c.Status(500).SendString("Failed to connect to database")
-	}
-
 	result, err := helpers.AllShortUrls()
 	if err != nil {
 		return c.Status(500).SendString("Failed to fetch URLs")
@@ -30,31 +29,23 @@ func Index(c *fiber.Ctx) error {
 }
 
 func Shorten(c *fiber.Ctx) error {
-	shortenRequest := new(entities.ShortenRequest)
-	if err := c.BodyParser(shortenRequest); err != nil {
+	shortenRequest := entities.ShortenRequest{}
+	if err := c.BodyParser(&shortenRequest); err != nil {
 		return c.Status(400).SendString(err.Error())
 	}
-	/*
-		ip := c.IP()
-		current, err := helpers.IncrementRateLimit(ip)
-		if err != nil {
-			return c.Status(500).SendString(err.Error())
-		}
-
-		if current >= 5 {
-			return c.Status(429).SendString("Rate limit exceeded. Please try again later.")
-		}
-	*/
 	shortUrlStr := helpers.GenerateShortUrl()
-
+	expireHours, err := strconv.Atoi(os.Getenv("URL_EXPIRE"))
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
 	urlNew := entities.Url{
 		OriginalUrl:  shortenRequest.OriginalUrl,
-		ShortenedUrl: "http://10.150.238.245:3000/url/" + shortUrlStr,
+		ShortenedUrl: os.Getenv("BASE_URL") + shortUrlStr,
 		UsageCount:   0,
-		ExpiresAt:    time.Now().Add(24 * time.Hour),
+		ExpiresAt:    time.Now().Add(time.Duration(expireHours) * time.Hour),
 	}
 
-	err := database.Connection().Model(&entities.Url{}).Create(&urlNew).Error
+	err = database.Connection().Model(&entities.Url{}).Create(&urlNew).Error
 	if err != nil {
 		return c.Status(500).SendString(err.Error())
 	}
@@ -63,7 +54,7 @@ func Shorten(c *fiber.Ctx) error {
 }
 
 func Redirect(c *fiber.Ctx) error {
-	short_url := "http://10.150.238.245:3000/url/" + c.Params("short_url")
+	short_url := os.Getenv("BASE_URL") + c.Params("short_url")
 	//short_url := c.Params("short_url")
 	fmt.Println("short_url : ", short_url)
 
@@ -81,10 +72,20 @@ func Redirect(c *fiber.Ctx) error {
 
 	return c.Redirect(url.OriginalUrl, http.StatusMovedPermanently)
 }
-
 func Delete(c *fiber.Ctx) error {
+	short_url := os.Getenv("BASE_URL") + c.Params("short_url")
 
-	short_url := "http://10.150.238.245:3000/url/" + c.Params("short_url")
+	var url entities.Url
+	if err := database.Connection().Model(&entities.Url{}).Where("shortened_url = ?", short_url).First(&url).Error; err != nil {
+		if gorm.ErrRecordNotFound == err {
+			return c.Status(404).JSON(fiber.Map{
+				"error": "Record not found",
+			})
+		}
+		return c.Status(500).JSON(fiber.Map{
+			"error": "Failed to find item",
+		})
+	}
 
 	if err := database.Connection().Model(&entities.Url{}).Where("shortened_url = ?", short_url).Delete(&entities.Url{}).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{
@@ -99,7 +100,7 @@ func Delete(c *fiber.Ctx) error {
 
 func UrlStats(c *fiber.Ctx) error {
 	var url entities.Url
-	short_url := "http://10.150.238.245:3000/url/" + c.Params("short_url")
+	short_url := os.Getenv("BASE_URL") + c.Params("short_url")
 	result := database.Connection().First(&url, "shortened_url = ?", short_url)
 	if result.Error != nil {
 		return c.Status(500).SendString(result.Error.Error())

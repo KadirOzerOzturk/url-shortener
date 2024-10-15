@@ -2,6 +2,7 @@ package helpers
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"time"
 
@@ -39,25 +40,6 @@ func GenerateShortUrl() string {
 	return string(randStr)
 }
 
-/*
-	func IncrementRateLimit(ip string) (int, error) {
-		redisClient := database.GetRedisClient()
-		limitKey := "rate_limit:" + ip
-		ctx := context.Background()
-		current, err := redisClient.Get(ctx, limitKey).Int()
-		if err != nil && err != redis.Nil {
-			return 0, err
-		}
-
-		if current >= 5 {
-			return current, nil
-		}
-
-		redisClient.Incr(ctx, limitKey)
-		redisClient.Expire(ctx, limitKey, 60*time.Second)
-		return current, nil
-	}
-*/
 func AllShortUrls() ([]entities.Url, error) {
 	items := []entities.Url{}
 
@@ -71,35 +53,39 @@ func IncClickCount(url entities.Url) {
 	count := url.UsageCount + 1
 	fmt.Println("usage_count : ", count)
 
-	database.Connection().Model(&url).Where("shortened_url = ?", url.ShortenedUrl).Updates(entities.Url{
-		UsageCount: count,
-	})
+	if err := database.Connection().Model(&url).Where("shortened_url = ?", url.ShortenedUrl).Updates(entities.Url{UsageCount: count}).Error; err != nil {
+		log.Fatalf("Update failed: %v", err)
+	}
+
 }
 func SaveAccessDetails(url entities.Url, ip string) {
 	fmt.Println("accessed ip : ", ip)
-	log := &entities.Log{}
+	ipLog := &entities.Log{}
 
-	result := database.Connection().Model(&log).Where("shortened_url = ? AND accessed_ip = ?", url.ShortenedUrl, ip).First(&log)
-
-	// Check if no record was found
+	result := database.Connection().Model(&ipLog).Where("shortened_url = ? AND accessed_ip = ?", url.ShortenedUrl, ip).First(&ipLog)
 	if result.RowsAffected == 0 {
 		fmt.Println("Yeni Kayıt")
-		database.Connection().Model(&entities.Log{}).Create(&entities.Log{
+		if err := database.Connection().Model(&entities.Log{}).Create(&entities.Log{
 			ShortenedUrl: url.ShortenedUrl,
 			AccessedIp:   ip,
 			AccessedAt:   time.Now(),
 			AccessCount:  1,
-		})
+		}).Error; err != nil {
+			log.Fatalf("Process failed: %v", err)
+		}
+
 	} else if result.Error == nil {
-		UpdateAccessDetails(*log, ip)
+		UpdateAccessDetails(*ipLog, ip)
 	} else {
 		fmt.Println("Error: ", result.Error)
 	}
 }
 
-func UpdateAccessDetails(log entities.Log, ip string) {
-	accessCount := log.AccessCount + 1
-	database.Connection().Model(&log).Where("shortened_url = ? AND accessed_ip = ?", log.ShortenedUrl, ip).Updates(entities.Log{
+func UpdateAccessDetails(ipLog entities.Log, ip string) {
+	accessCount := ipLog.AccessCount + 1
+	if err := database.Connection().Model(&ipLog).Where("shortened_url = ? AND accessed_ip = ?", ipLog.ShortenedUrl, ip).Updates(entities.Log{
 		AccessCount: accessCount,
-	})
+	}).Error; err != nil {
+		log.Fatalf("Update Failed : %v", err)
+	}
 }
