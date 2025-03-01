@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  go-app:
+    container_name: go-app
+    image: go-app
+    build: .
+    environment:
+      DATABASE_URL: "host=go_db user=${DB_USER} password=${DB_PASS} dbname=${DB_NAME} sslmode=disable"
+      URL_EXPIRE: ${URL_EXPIRE}
+      RATE_LIMIT_TIME: ${RATE_LIMIT_TIME}
+    ports:
+      - "8080:8080"
+    depends_on:
+      - go_db
+    env_file:
+      - .env
+
+  go_db:
+    container_name: go_db
+    image: postgres:12
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "5432:5430"  
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+
+volumes:
+  pg-data: {}
