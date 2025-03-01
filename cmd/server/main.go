@@ -24,7 +24,7 @@ func main() {
 
 	// CORS middleware'ini ekle
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: "http://localhost:3000,http://localhost:5000,https://www.example.com,https://staging.example.com",
+		AllowOrigins: "http://localhost:3000,https://shorterly.net/,https://url-shortener-znmr.onrender.com",
 		AllowMethods: "GET,POST, PUT,DELETE",
 		AllowHeaders: "Content-Type, Authorization",
 	}))
