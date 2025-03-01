@@ -33,6 +33,9 @@ func Shorten(c *fiber.Ctx) error {
 	if err := c.BodyParser(&shortenRequest); err != nil {
 		return c.Status(400).SendString(err.Error())
 	}
+	if shortenRequest.OriginalUrl == "" {
+		return c.Status(400).SendString("Original URL is required")
+	}
 	shortUrlStr := helpers.GenerateShortUrl()
 	expireHours, err := strconv.Atoi(os.Getenv("URL_EXPIRE"))
 	if err != nil {
