@@ -3,7 +3,6 @@ package urls
 import (
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"strconv"
 	"time"
@@ -73,7 +72,9 @@ func Redirect(c *fiber.Ctx) error {
 	go helpers.IncClickCount(url)
 	go helpers.SaveAccessDetails(url, c.IP())
 
-	return c.Redirect(url.OriginalUrl, http.StatusMovedPermanently)
+	return c.Status(200).JSON(fiber.Map{
+		"originalUrl": url.OriginalUrl,
+	})
 }
 func Delete(c *fiber.Ctx) error {
 	short_url := os.Getenv("BASE_URL") + c.Params("short_url")

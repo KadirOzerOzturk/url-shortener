@@ -89,3 +89,11 @@ func UpdateAccessDetails(ipLog entities.Log, ip string) {
 		log.Fatalf("Update Failed : %v", err)
 	}
 }
+
+func SendMail(mail entities.Mail) error {
+	// insert mail to database
+	if err := database.Connection().Model(&entities.Mail{}).Create(&mail).Error; err != nil {
+		return err
+	}
+	return nil
+}

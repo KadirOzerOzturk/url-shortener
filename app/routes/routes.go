@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"github.com/KadirOzerOzturk/url-shortener/app/controllers/mails"
 	"github.com/KadirOzerOzturk/url-shortener/app/controllers/urls"
 	"github.com/gofiber/fiber/v2"
 )
@@ -15,5 +16,9 @@ func SetupRoutes(app *fiber.App) {
 
 		group.Get("/:short_url/stats", urls.UrlStats)
 		group.Delete("/:short_url", urls.Delete)
+	}
+	mail := app.Group("/mail")
+	{
+		mail.Post("/send", mails.SendMail)
 	}
 }
