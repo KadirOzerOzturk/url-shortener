@@ -10,7 +10,6 @@ import (
 	"github.com/KadirOzerOzturk/url-shortener/internal/server"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/limiter"
-	redisStorage "github.com/gofiber/storage/redis"
 	_ "github.com/joho/godotenv/autoload"
 )
 
@@ -35,13 +34,8 @@ func main() {
 		LimitReached: func(c *fiber.Ctx) error {
 			return c.Status(429).SendString("Rate limit exceeded. Please try again later.")
 		},
-		Storage: redisStorage.New(redisStorage.Config{
-			Host:     "localhost",
-			Port:     6379,
-			Password: "",
-		}),
 	}))
 
 	routes.SetupRoutes(app)
-	app.Listen(":3000")
+	app.Listen(":8080")
 }
