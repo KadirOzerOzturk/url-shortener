@@ -43,7 +43,8 @@ func GenerateShortUrl() string {
 func AllShortUrls() ([]entities.Url, error) {
 	items := []entities.Url{}
 
-	if err := database.Connection().Find(&items).Error; err != nil {
+	if err := database.Connection().Table("urls").Select("*").Find(&items).Error; err != nil {
+		log.Println("Error fetching URLs:", err) // Log the error for better insight
 		return nil, err
 	}
 
@@ -91,9 +92,22 @@ func UpdateAccessDetails(ipLog entities.Log, ip string) {
 }
 
 func SendMail(mail entities.Mail) error {
-	// insert mail to database
 	if err := database.Connection().Model(&entities.Mail{}).Create(&mail).Error; err != nil {
 		return err
 	}
 	return nil
+}
+
+func Login(user entities.User) (entities.User, error) {
+	result := database.Connection().Model(&entities.User{}).Where("email = ?", user.Email).First(&user)
+	if result.Error != nil {
+		return entities.User{}, result.Error
+	}
+	return user, nil
+}
+func Register(user entities.User) (entities.User, error) {
+	if err := database.Connection().Model(&entities.User{}).Create(&user).Error; err != nil {
+		return entities.User{}, err
+	}
+	return user, nil
 }

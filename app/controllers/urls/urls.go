@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/KadirOzerOzturk/url-shortener/app/entities"
@@ -17,6 +18,7 @@ import (
 func Index(c *fiber.Ctx) error {
 	result, err := helpers.AllShortUrls()
 	if err != nil {
+		log.Println("Failed to fetch URLs:", err)
 		return c.Status(500).SendString("Failed to fetch URLs")
 	}
 
@@ -45,6 +47,7 @@ func Shorten(c *fiber.Ctx) error {
 		ShortenedUrl: os.Getenv("BASE_URL") + shortUrlStr,
 		UsageCount:   0,
 		ExpiresAt:    time.Now().Add(time.Duration(expireHours) * time.Hour),
+		UserEmail:    shortenRequest.UserEmail,
 	}
 
 	err = database.Connection().Model(&entities.Url{}).Create(&urlNew).Error
@@ -55,6 +58,29 @@ func Shorten(c *fiber.Ctx) error {
 	return c.JSON(urlNew)
 }
 
+func GetUrlsByUser(c *fiber.Ctx) error {
+	userEmail := strings.TrimSpace(c.Params("email")) // Trim any spaces
+
+	// Optionally, convert to lowercase if needed (emails are case-insensitive)
+	userEmail = strings.ToLower(userEmail)
+
+	var urls []entities.Url
+
+	// Perform the query with a consistent structure
+	result := database.Connection().Where("user_email = ?", userEmail).Find(&urls)
+
+	if result.Error != nil {
+		// Log the error for better debugging
+		log.Println("Error fetching URLs by user:", result.Error)
+		return c.Status(500).SendString(result.Error.Error())
+	}
+
+	if len(urls) == 0 {
+		return c.Status(404).SendString("No records found")
+	}
+
+	return c.JSON(urls)
+}
 func Redirect(c *fiber.Ctx) error {
 	short_url := os.Getenv("BASE_URL") + c.Params("short_url")
 	//short_url := c.Params("short_url")
@@ -77,7 +103,7 @@ func Redirect(c *fiber.Ctx) error {
 	})
 }
 func Delete(c *fiber.Ctx) error {
-	short_url := os.Getenv("BASE_URL") + c.Params("short_url")
+	short_url := c.Params("short_url")
 
 	var url entities.Url
 	if err := database.Connection().Model(&entities.Url{}).Where("shortened_url = ?", short_url).First(&url).Error; err != nil {

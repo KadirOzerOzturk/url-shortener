@@ -9,4 +9,5 @@ func init() {
 	database.Connection().AutoMigrate(&entities.Url{})
 	database.Connection().AutoMigrate(&entities.Log{})
 	database.Connection().AutoMigrate(&entities.Mail{})
+	database.Connection().AutoMigrate(&entities.User{})
 }

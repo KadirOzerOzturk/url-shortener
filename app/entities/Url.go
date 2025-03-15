@@ -8,4 +8,5 @@ type Url struct {
 	ShortenedUrl string    `json:"shortened_url" `
 	UsageCount   uint      `json:"usage_count" `
 	ExpiresAt    time.Time `json:"expires_at" `
+	UserEmail    string    `json:"user_email" `
 }
